@@ -385,11 +385,13 @@ fn select_warmup_models(
         })
         .collect();
 
-    // Prefer mini (lightest), fall back to highest priority (lowest number).
+    // Prefer Luna for minimal warmups, keep mini for older catalogs, then use
+    // the highest API priority (lowest number).
     // Models mapped to additional pools must not replace the main-pool request.
     let main = main_candidates
         .iter()
-        .find(|m| m.slug.contains("mini"))
+        .find(|m| m.slug.contains("luna"))
+        .or_else(|| main_candidates.iter().find(|m| m.slug.contains("mini")))
         .or_else(|| {
             main_candidates
                 .iter()
@@ -1274,6 +1276,43 @@ mod tests {
     #[test]
     fn test_sorted_models_for_display_empty_list() {
         assert!(sorted_models_for_display(&[]).is_empty());
+    }
+
+    #[test]
+    fn warmup_prefers_luna_then_mini_then_api_priority() {
+        let models = vec![
+            ModelEntry {
+                slug: "gpt-6-astra".to_string(),
+                priority: Some(1),
+                supported_in_api: Some(true),
+                ..Default::default()
+            },
+            ModelEntry {
+                slug: "gpt-5.4-mini".to_string(),
+                priority: Some(2),
+                supported_in_api: Some(true),
+                ..Default::default()
+            },
+            ModelEntry {
+                slug: "gpt-6-luna".to_string(),
+                priority: Some(3),
+                supported_in_api: Some(true),
+                ..Default::default()
+            },
+        ];
+
+        assert_eq!(
+            select_warmup_models(&models, &[]).unwrap(),
+            vec!["gpt-6-luna"]
+        );
+        assert_eq!(
+            select_warmup_models(&models[..2], &[]).unwrap(),
+            vec!["gpt-5.4-mini"]
+        );
+        assert_eq!(
+            select_warmup_models(&models[..1], &[]).unwrap(),
+            vec!["gpt-6-astra"]
+        );
     }
 
     #[test]
