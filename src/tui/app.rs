@@ -910,9 +910,7 @@ impl App {
                 None
             }
             OverlayClick::LaunchModel(idx) => {
-                let Some(picker) = self.provider_launch.as_mut() else {
-                    return None;
-                };
+                let picker = self.provider_launch.as_mut()?;
                 picker.click_model(idx).then_some(KeyCode::Enter)
             }
             OverlayClick::LaunchReasoning => {
